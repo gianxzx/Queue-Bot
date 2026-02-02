@@ -7,6 +7,8 @@ import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   type Interaction,
   type TextChannel
 } from "discord.js";
@@ -92,8 +94,8 @@ client.on('interactionCreate', async (interaction: Interaction) => {
       if (interaction.commandName === 'add-queue') {
         await handleAddQueue(interaction);
       }
-    } else if (interaction.isButton()) {
-      await handleButton(interaction);
+    } else if (interaction.isStringSelectMenu()) {
+      await handleSelectMenu(interaction);
     }
   } catch (error) {
     console.error('Interaction error:', error);
@@ -162,22 +164,24 @@ _ _
 **Noted** *!*
 `;
 
-  // Create Buttons
-  const row = new ActionRowBuilder<ButtonBuilder>()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('noted')
+  // Create Select Menu
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('order-status')
+    .setPlaceholder('set order status...')
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
         .setLabel('Noted')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('processing')
+        .setValue('noted'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('Processing')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('done')
+        .setValue('processing'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('Done')
-        .setStyle(ButtonStyle.Success)
+        .setValue('done')
     );
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>()
+    .addComponents(select);
 
   const queueMessage = await queueChannel.send({
     content: queueMessageContent,
@@ -199,89 +203,47 @@ _ _
   });
 }
 
-async function handleButton(interaction: any) {
+async function handleSelectMenu(interaction: any) {
   // Check Permissions
   const member = interaction.member;
   const hasRole = member.roles.cache.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
   
   if (!hasRole) {
-    return interaction.reply({ content: 'You do not have permission to use these buttons.', ephemeral: true });
+    return interaction.reply({ content: 'You do not have permission to use this menu.', ephemeral: true });
   }
 
-  const action = interaction.customId; // noted, processing, done
+  const action = interaction.values[0]; // noted, processing, done
   const message = interaction.message;
   
-  // Find order in DB by messageId
-  // Since we don't have a direct query for messageId in storage interface, we might need to fetch all or add a method.
-  // Ideally, add getOrderByMessageId to storage. For now, let's just assume we update the message content directly 
-  // and update status in DB if possible.
-  
-  // Actually, let's add `updateOrderMessageId` and query by messageId?
-  // I added `updateOrderMessageId` but not `getOrderByMessageId`.
-  // However, I can fetch the order if I needed it, but here I just need to update the message content.
-  // Wait, I need the original details to reconstruct the message if I change the status text?
-  // The user prompt says: "When status changes to Noted or Processing: Update the text content".
-  // The text content changes: "**Noted** *!*" or "**Processing** *!*" at the bottom.
-  // I can just replace the last line.
-
-  let originalContent = message.content;
-  // Remove the last line (status)
-  // The format ends with:
-  // -# chef : {user} <emoji>
-  // 
-  // **Noted** *!*
-  
-  // We can regex replace the status line.
-  
   let newStatusText = "";
-  let dbStatus = "";
 
   if (action === 'noted') {
     newStatusText = "**Noted** *!*";
-    dbStatus = "noted";
   } else if (action === 'processing') {
     newStatusText = "**Processing** *!*";
-    dbStatus = "processing";
   } else if (action === 'done') {
     newStatusText = "**Done** *!*";
-    dbStatus = "done";
   }
 
-  // Replace the status line
-  // Status line is likely at the end.
-  // Let's replace `**Noted** *!*` or `**Processing** *!*` or `**order placed** *!*`?
-  // No, the header says "**order placed** *!*". The footer says "**Noted** *!*".
-  
-  let newContent = originalContent;
+  let newContent = message.content;
   if (newContent.includes('**Noted** *!*')) {
     newContent = newContent.replace('**Noted** *!*', newStatusText);
   } else if (newContent.includes('**Processing** *!*')) {
     newContent = newContent.replace('**Processing** *!*', newStatusText);
   } else if (newContent.includes('**Done** *!*')) {
      newContent = newContent.replace('**Done** *!*', newStatusText);
-  } else {
-    // If it's the first time and only has "Noted" from initial send? 
-    // Initial send has "**Noted** *!*" at the end.
-    // So logic above holds.
   }
 
   if (action === 'done') {
-    // Remove components
     await message.edit({
       content: newContent,
       components: []
     });
   } else {
-    // Keep components, update content
     await message.edit({
       content: newContent
     });
   }
 
   await interaction.deferUpdate();
-  
-  // Update DB (optional if we don't strictly need it for the bot flow, but good for records)
-  // We'd need to find the order ID.
-  // Since I didn't implement `getOrderByMessageId`, I'll skip DB update for status for now or add it to storage.
-  // I'll add `getOrderByMessageId` to storage to be clean.
 }
