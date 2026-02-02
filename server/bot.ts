@@ -126,7 +126,7 @@ async function handleAddQueue(interaction: any) {
   const publicMessage = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
-your order flows with Eywa<:blank:1467844528554901608>  <a:0074_blue:1263544906270638132> 
+your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> mawey, dear ${customerUsername} your order has been seen *!*
 <:blank:1467844528554901608> remain calm as your chef prepares it for you <:lightblue_heartios:1463466125537968129> 
@@ -137,7 +137,7 @@ _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> 
 -# served by ${user} <a:blue_heartpop:1467809370246090928> 
 _ _
--# <:suchiblank:1406916898201010217> [where the water guides your order](https://discord.com/channels/1461710247193219186/1467803822540718155/1467833947311309013)
+-# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1467803822540718155/1467833947311309013)
 _ _
 `;
 
@@ -161,7 +161,7 @@ _ _
 -# consumer  :  ${customerUsername}
 -# chef : ${user} <a:blue_heartpop:1467809370246090928> 
 
-**Noted** *!*
+# Noted *!*
 `;
 
   // Create Select Menu
