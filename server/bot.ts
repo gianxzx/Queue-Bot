@@ -177,7 +177,6 @@ Noted *!*
     qty,
     payment,
     totalBill,
-    status: 'noted',
     staffId: user.id,
     staffUsername: user.username,
     channelId: QUEUE_CHANNEL_ID,
@@ -223,6 +222,12 @@ async function handleSelectMenu(interaction: any) {
       components: []
     });
 
+    // Update status in database
+    const order = await storage.getOrderByMessageId(message.id);
+    if (order) {
+      await storage.updateOrderStatus(order.id, 'done');
+    }
+
     // Extract order details from message content
     const contentLines = message.content.split('\n');
     const foodQtyLine = contentLines.find((l: string) => l.includes('tsireya_star') && l.includes('('));
@@ -231,7 +236,8 @@ async function handleSelectMenu(interaction: any) {
     const consumerLine = contentLines.find((l: string) => l.includes('consumer'));
     const chefLine = contentLines.find((l: string) => l.includes('chef'));
 
-    const qty = foodQtyLine?.match(/\(\s*\*\*([^\*]+)\*\*\s*\)/)?.[1] || "1";
+    const qtyMatch = foodQtyLine?.match(/\(\s*\*\*([^\*]+)\*\*\s*\)/);
+    const qty = qtyMatch ? qtyMatch[1] : "1";
     const food = foodQtyLine?.split('—')?.pop()?.trim() || "Food";
     const payment = paymentLine?.split('paid via')?.pop()?.trim() || "donation";
     const totalBill = billLine?.split(':')?.pop()?.trim() || "0";
@@ -256,17 +262,14 @@ _ _
 -# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
-    // We try to find the original public channel to send the "Done" message. 
-    // In this flow, we'll send it back to the channel where the interaction happened if it's not the queue channel,
-    // or we'll try to reply to the original interaction if possible. 
-    // However, since we are in handleSelectMenu which is usually in the QUEUE_CHANNEL, 
-    // we should ideally send it to the channel where /add-queue was originally used.
-    // For now, we'll send it to the same channel as a follow-up if it's not the queue channel, 
-    // but the request implies it's a "pop up message just like in the picture", 
-    // which was the response to /add-queue.
-    
     await channel.send({ content: doneMessage });
   } else {
+    // Update status in database
+    const order = await storage.getOrderByMessageId(message.id);
+    if (order) {
+      await storage.updateOrderStatus(order.id, action);
+    }
+    
     await message.edit({
       content: newContent
     });
