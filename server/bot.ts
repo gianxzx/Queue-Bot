@@ -4,13 +4,8 @@ import {
   REST, 
   Routes, 
   SlashCommandBuilder, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
-  type Interaction,
-  type TextChannel
+  ActionRowBuilder,
+  StringSelectMenuBuilder
 } from "discord.js";
 import { storage } from "./storage";
 
@@ -88,7 +83,7 @@ export async function startBot() {
   }
 }
 
-client.on('interactionCreate', async (interaction: Interaction) => {
+client.on('interactionCreate', async (interaction: any) => {
   try {
     if (interaction.isChatInputCommand()) {
       if (interaction.commandName === 'add-queue') {
@@ -106,9 +101,8 @@ client.on('interactionCreate', async (interaction: Interaction) => {
 });
 
 async function handleAddQueue(interaction: any) {
-  // Check Permissions
   const member = interaction.member;
-  const hasRole = member.roles.cache.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
+  const hasRole = member?.roles?.cache?.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
   
   if (!hasRole) {
     return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
@@ -121,8 +115,6 @@ async function handleAddQueue(interaction: any) {
   const totalBill = interaction.options.getString('total-bill');
   const user = interaction.user;
 
-  // 1. Send Public Message Output (Visible to Everyone)
-  // Reply to the interaction in the channel where command was used
   const publicMessage = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
@@ -143,8 +135,7 @@ _ _
 
   await interaction.reply({ content: publicMessage });
 
-  // 2. Send Queue Layout Message to specific channel
-  const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as TextChannel;
+  const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as any;
   if (!queueChannel) {
     console.error('Queue channel not found');
     return;
@@ -161,34 +152,25 @@ _ _
 -# consumer  :  ${customerUsername}
 -# chef : ${user} <a:blue_heartpop:1467809370246090928> 
 
-# Noted *!*
+Noted *!*
 `;
 
-  // Create Select Menu
   const select = new StringSelectMenuBuilder()
     .setCustomId('order-status')
     .setPlaceholder('set order status...')
-    .addOptions(
-      new StringSelectMenuOptionBuilder()
-        .setLabel('Noted')
-        .setValue('noted'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('Processing')
-        .setValue('processing'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('Done')
-        .setValue('done')
-    );
+    .addOptions([
+      { label: 'Noted', value: 'noted' },
+      { label: 'Processing', value: 'processing' },
+      { label: 'Done', value: 'done' }
+    ]);
 
-  const row = new ActionRowBuilder<StringSelectMenuBuilder>()
-    .addComponents(select);
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
   const queueMessage = await queueChannel.send({
     content: queueMessageContent,
     components: [row]
   });
 
-  // 3. Save to DB
   await storage.createOrder({
     customerUsername,
     food,
@@ -204,34 +186,33 @@ _ _
 }
 
 async function handleSelectMenu(interaction: any) {
-  // Check Permissions
   const member = interaction.member;
-  const hasRole = member.roles.cache.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
+  const hasRole = member?.roles?.cache?.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
   
   if (!hasRole) {
     return interaction.reply({ content: 'You do not have permission to use this menu.', ephemeral: true });
   }
 
-  const action = interaction.values[0]; // noted, processing, done
+  const action = interaction.values[0];
   const message = interaction.message;
   
   let newStatusText = "";
 
   if (action === 'noted') {
-    newStatusText = "**Noted** *!*";
+    newStatusText = "Noted *!*";
   } else if (action === 'processing') {
-    newStatusText = "**Processing** *!*";
+    newStatusText = "Processing *!*";
   } else if (action === 'done') {
-    newStatusText = "**Done** *!*";
+    newStatusText = "Done *!*";
   }
 
   let newContent = message.content;
-  if (newContent.includes('**Noted** *!*')) {
-    newContent = newContent.replace('**Noted** *!*', newStatusText);
-  } else if (newContent.includes('**Processing** *!*')) {
-    newContent = newContent.replace('**Processing** *!*', newStatusText);
-  } else if (newContent.includes('**Done** *!*')) {
-     newContent = newContent.replace('**Done** *!*', newStatusText);
+  if (newContent.includes('Noted *!*')) {
+    newContent = newContent.replace('Noted *!*', newStatusText);
+  } else if (newContent.includes('Processing *!*')) {
+    newContent = newContent.replace('Processing *!*', newStatusText);
+  } else if (newContent.includes('Done *!*')) {
+     newContent = newContent.replace('Done *!*', newStatusText);
   }
 
   if (action === 'done') {
