@@ -30,11 +30,11 @@ const commands = [
     .setDescription('Add a new order to the queue')
     .addStringOption(option => 
       option.setName('food')
-        .setDescription('The food item')
+        .setDescription('The food item (use comma to separate: x, x)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('qty')
-        .setDescription('Quantity (e.g., 2x)')
+        .setDescription('Quantity (use comma to separate: 2,1)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('payment')
