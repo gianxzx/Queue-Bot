@@ -30,11 +30,11 @@ const commands = [
     .setDescription('Add a new order to the queue')
     .addStringOption(option => 
       option.setName('food')
-        .setDescription('The food item')
+        .setDescription('The food item (use comma to separate ex: x,x)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('qty')
-        .setDescription('Quantity (e.g., 2x)')
+        .setDescription('Quantity (use comma to separate ex: 0, 0)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('payment')
@@ -46,7 +46,7 @@ const commands = [
         ))
     .addStringOption(option => 
       option.setName('customer-username')
-        .setDescription('Customer username')
+        .setDescription('Customer username (for ping)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('total-bill')
@@ -57,11 +57,11 @@ const commands = [
     .setDescription('Mark an order as done and send the pickup message')
     .addStringOption(option => 
       option.setName('food')
-        .setDescription('The food item')
+        .setDescription('The food item (use comma to separate ex: x,x)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('qty')
-        .setDescription('Quantity (e.g., 2x)')
+        .setDescription('Quantity (use comma to separate ex: 0,0)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('payment')
@@ -73,7 +73,7 @@ const commands = [
         ))
     .addStringOption(option => 
       option.setName('customer-username')
-        .setDescription('Customer username')
+        .setDescription('Customer username (forping)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('total-bill')
@@ -176,7 +176,7 @@ _ _
 
 <a:tsireya_star:1467809489163128898>   (**${qty}**) ${food}
 <a:tsireya_star:1467809489163128898>   **paid via ${payment}**
-<a:tsireya_star:1467809489163128898>   **total bill : ${totalBill}
+<a:tsireya_star:1467809489163128898>   **total bill : ${totalBill}**
 
 -# consumer  :  ${customerUsername}
 -# chef : ${user} <a:blue_heartpop:1467809370246090928> 
@@ -234,7 +234,7 @@ _ _
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> mawey, dear ${customerUsername} your order is **done** *!*
-<:blank:1467844528554901608> your meal is ready for pickup — enjoy the tides <:lightblue_heartios:1463466125537968129> 
+<:blank:1467844528554901608> your order is ready for pickup — enjoy the tides <:lightblue_heartios:1463466125537968129> 
 
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> ( **${qty}** ) — ${food}
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> paid via ${payment}
@@ -243,7 +243,7 @@ _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> 
 -# served by ${user} <a:blue_heartpop:1467809370246090928> 
 _ _
--# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
+-# <:blank:1467844528554901608> [__don’t forget — your chef deserves a vouch__](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
 
