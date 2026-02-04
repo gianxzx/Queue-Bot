@@ -11,9 +11,12 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Replit Postgres requires SSL and specific configuration
+// We use SSL but allow self-signed certs as common for cloud providers
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  // Adding connection timeout to help debug
+  connectionTimeoutMillis: 5000,
 });
 
 export const db = drizzle(pool, { schema });

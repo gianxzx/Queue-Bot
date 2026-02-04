@@ -51,6 +51,33 @@ const commands = [
     .addStringOption(option => 
       option.setName('total-bill')
         .setDescription('Total bill amount')
+        .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('order-done')
+    .setDescription('Mark an order as done and send the pickup message')
+    .addStringOption(option => 
+      option.setName('food')
+        .setDescription('The food item')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('qty')
+        .setDescription('Quantity (e.g., 2x)')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('payment')
+        .setDescription('Payment method')
+        .setRequired(true)
+        .addChoices(
+          { name: 'donation', value: 'donation' },
+          { name: 'premades', value: 'premades' }
+        ))
+    .addStringOption(option => 
+      option.setName('customer-username')
+        .setDescription('Customer username')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('total-bill')
+        .setDescription('Total bill amount')
         .setRequired(true))
 ];
 
@@ -88,6 +115,8 @@ client.on('interactionCreate', async (interaction: any) => {
     if (interaction.isChatInputCommand()) {
       if (interaction.commandName === 'add-queue') {
         await handleAddQueue(interaction);
+      } else if (interaction.commandName === 'order-done') {
+        await handleOrderDone(interaction);
       }
     } else if (interaction.isStringSelectMenu()) {
       await handleSelectMenu(interaction);
@@ -182,6 +211,82 @@ Noted *!*
     channelId: QUEUE_CHANNEL_ID,
     messageId: queueMessage.id
   });
+}
+
+async function handleOrderDone(interaction: any) {
+  const member = interaction.member;
+  const hasRole = member?.roles?.cache?.some((role: any) => STAFF_ROLE_IDS.includes(role.id));
+  
+  if (!hasRole) {
+    return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
+  }
+
+  const food = interaction.options.getString('food');
+  const qty = interaction.options.getString('qty');
+  const payment = interaction.options.getString('payment');
+  const customerUsername = interaction.options.getString('customer-username');
+  const totalBill = interaction.options.getString('total-bill');
+  const user = interaction.user;
+
+  const doneMessageContent = `
+_ _
+<:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
+your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
+_ _
+<:blank:1467844528554901608> <:blank:1467844528554901608> mawey, dear ${customerUsername} your order is **done** *!*
+<:blank:1467844528554901608> your meal is ready for pickup — enjoy the tides <:lightblue_heartios:1463466125537968129> 
+
+<:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> ( **${qty}** ) — ${food}
+<:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> paid via ${payment}
+<:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> total bill : ${totalBill}
+<:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> NBH: \`\`Mr_Lambo221\`\`
+<:blank:1467844528554901608> <:blank:1467844528554901608> 
+-# served by ${user} <a:blue_heartpop:1467809370246090928> 
+_ _
+-# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
+_ _
+`;
+
+  await interaction.reply({ content: doneMessageContent });
+
+  // Update status in database if we can find a matching order
+  try {
+    const activeOrders = await storage.getOrders();
+    const matchingOrder = activeOrders.find(o => 
+      o.customerUsername === customerUsername && 
+      o.food === food && 
+      o.status !== 'done'
+    );
+    
+    if (matchingOrder) {
+      await storage.updateOrderStatus(matchingOrder.id, 'done');
+      
+      // Also try to update the queue message if possible
+      if (matchingOrder.messageId) {
+        try {
+          const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as any;
+          if (queueChannel) {
+            const message = await queueChannel.messages.fetch(matchingOrder.messageId);
+            if (message) {
+              let newContent = message.content;
+              const statusMatch = newContent.match(/(Noted|Processing|Done) \*!\*/);
+              if (statusMatch) {
+                newContent = newContent.replace(statusMatch[0], "Done *!*");
+              }
+              await message.edit({
+                content: newContent,
+                components: []
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to update queue message via /order-done:", e);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Database update failed in /order-done:", e);
+  }
 }
 
 async function handleSelectMenu(interaction: any) {
