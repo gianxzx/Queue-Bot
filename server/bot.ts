@@ -174,9 +174,9 @@ _ _
 ** **
 <:blue_pin:1463465585915723787>   :  **order placed** *!*
 
-<a:tsireya_star:1467809489163128898>   (**${qty}**) ${food}
-<a:tsireya_star:1467809489163128898>   **paid via ${payment}**
-<a:tsireya_star:1467809489163128898>   **total bill : ${totalBill}**
+<:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   (**${qty}**) ${food}
+<:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   **paid via ${payment}**
+<:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   **total bill : ${totalBill}**
 
 -# consumer  :  ${customerUsername}
 -# chef : ${user} <a:blue_heartpop:1467809370246090928> 
