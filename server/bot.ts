@@ -218,6 +218,8 @@ async function handleSelectMenu(interaction: any) {
 
   if (action === 'done') {
     try {
+      console.log("Status set to Done. Updating message and sending notification...");
+      
       await message.edit({
         content: newContent,
         components: [] // Remove components when done
@@ -237,16 +239,19 @@ async function handleSelectMenu(interaction: any) {
       const consumerLine = contentLines.find((l: string) => l.includes('consumer'));
       const chefLine = contentLines.find((l: string) => l.includes('chef'));
 
-      // Improved extraction logic
+      // Improved extraction logic - finding text between emoji/parentheses
       const qtyMatch = foodQtyLine?.match(/\(\s*\*\*([^\*]+)\*\*\s*\)/) || foodQtyLine?.match(/\(\*\*([^\*]+)\*\*\)/);
       const qty = qtyMatch ? qtyMatch[1] : "1";
-      const food = foodQtyLine?.split(')')?.pop()?.trim() || "Food";
+      
+      // Split by emoji or dash to get food name
+      const food = foodQtyLine?.split(')')?.pop()?.replace(/^[—\s]+/, '')?.trim() || "Food";
+      
       const payment = paymentLine?.split('paid via')?.pop()?.trim() || "donation";
       const totalBill = billLine?.split(':')?.pop()?.trim() || "0";
       const customerUsername = consumerLine?.split(':')?.pop()?.trim() || "Customer";
       const chefMention = chefLine?.split(':')?.pop()?.split('<')[0]?.trim() || "Chef";
 
-      const doneMessage = `
+      const doneMessageContent = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
@@ -264,7 +269,8 @@ _ _
 -# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
-      await channel.send({ content: doneMessage });
+      await channel.send({ content: doneMessageContent });
+      console.log("Done message sent successfully.");
     } catch (e) {
       console.error("Error in done status processing:", e);
     }
@@ -298,7 +304,9 @@ _ _
   }
 
   try {
-    await interaction.deferUpdate();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferUpdate();
+    }
   } catch (e) {
     // Ignore if already acknowledged
   }
