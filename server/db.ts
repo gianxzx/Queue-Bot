@@ -10,10 +10,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Ensure the connection string is correctly parsed by the driver
+// In Replit, the DATABASE_URL should work without extra config for Neon/Postgres.
+// However, the user is experiencing authentication errors.
+// This often happens if the connection string format isn't quite right for the driver
+// or if SSL is required but not handled.
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
 });
 
 export const db = drizzle(pool, { schema });

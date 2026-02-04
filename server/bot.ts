@@ -30,11 +30,11 @@ const commands = [
     .setDescription('Add a new order to the queue')
     .addStringOption(option => 
       option.setName('food')
-        .setDescription('The food item (use comma to separate: x, x)')
+        .setDescription('The food item')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('qty')
-        .setDescription('Quantity (use comma to separate: 2,1)')
+        .setDescription('Quantity (e.g., 2x)')
         .setRequired(true))
     .addStringOption(option => 
       option.setName('payment')
@@ -194,7 +194,6 @@ async function handleSelectMenu(interaction: any) {
 
   const action = interaction.values[0];
   const message = interaction.message;
-  const guild = interaction.guild;
   const channel = interaction.channel;
   
   let newStatusText = "";
@@ -208,43 +207,46 @@ async function handleSelectMenu(interaction: any) {
   }
 
   let newContent = message.content;
-  if (newContent.includes('Noted *!*')) {
-    newContent = newContent.replace('Noted *!*', newStatusText);
-  } else if (newContent.includes('Processing *!*')) {
-    newContent = newContent.replace('Processing *!*', newStatusText);
-  } else if (newContent.includes('Done *!*')) {
-     newContent = newContent.replace('Done *!*', newStatusText);
+  // Update the status line in the message content
+  const statusMatch = newContent.match(/(Noted|Processing|Done) \*!\*/);
+  if (statusMatch) {
+    newContent = newContent.replace(statusMatch[0], newStatusText);
+  } else {
+    // If somehow missing, append it
+    newContent += `\n\n${newStatusText}`;
   }
 
   if (action === 'done') {
-    await message.edit({
-      content: newContent,
-      components: []
-    });
+    try {
+      await message.edit({
+        content: newContent,
+        components: [] // Remove components when done
+      });
 
-    // Update status in database
-    const order = await storage.getOrderByMessageId(message.id);
-    if (order) {
-      await storage.updateOrderStatus(order.id, 'done');
-    }
+      // Update status in database
+      const order = await storage.getOrderByMessageId(message.id);
+      if (order) {
+        await storage.updateOrderStatus(order.id, 'done');
+      }
 
-    // Extract order details from message content
-    const contentLines = message.content.split('\n');
-    const foodQtyLine = contentLines.find((l: string) => l.includes('tsireya_star') && l.includes('('));
-    const paymentLine = contentLines.find((l: string) => l.includes('paid via'));
-    const billLine = contentLines.find((l: string) => l.includes('total bill'));
-    const consumerLine = contentLines.find((l: string) => l.includes('consumer'));
-    const chefLine = contentLines.find((l: string) => l.includes('chef'));
+      // Extract order details from message content for the public notification
+      const contentLines = message.content.split('\n');
+      const foodQtyLine = contentLines.find((l: string) => l.includes('tsireya_star') && l.includes('('));
+      const paymentLine = contentLines.find((l: string) => l.includes('paid via'));
+      const billLine = contentLines.find((l: string) => l.includes('total bill'));
+      const consumerLine = contentLines.find((l: string) => l.includes('consumer'));
+      const chefLine = contentLines.find((l: string) => l.includes('chef'));
 
-    const qtyMatch = foodQtyLine?.match(/\(\s*\*\*([^\*]+)\*\*\s*\)/);
-    const qty = qtyMatch ? qtyMatch[1] : "1";
-    const food = foodQtyLine?.split('—')?.pop()?.trim() || "Food";
-    const payment = paymentLine?.split('paid via')?.pop()?.trim() || "donation";
-    const totalBill = billLine?.split(':')?.pop()?.trim() || "0";
-    const customerUsername = consumerLine?.split(':')?.pop()?.trim() || "Customer";
-    const chefMention = chefLine?.split(':')?.pop()?.split('<')[0]?.trim() || "Chef";
+      // Improved extraction logic
+      const qtyMatch = foodQtyLine?.match(/\(\s*\*\*([^\*]+)\*\*\s*\)/) || foodQtyLine?.match(/\(\*\*([^\*]+)\*\*\)/);
+      const qty = qtyMatch ? qtyMatch[1] : "1";
+      const food = foodQtyLine?.split(')')?.pop()?.trim() || "Food";
+      const payment = paymentLine?.split('paid via')?.pop()?.trim() || "donation";
+      const totalBill = billLine?.split(':')?.pop()?.trim() || "0";
+      const customerUsername = consumerLine?.split(':')?.pop()?.trim() || "Customer";
+      const chefMention = chefLine?.split(':')?.pop()?.split('<')[0]?.trim() || "Chef";
 
-    const doneMessage = `
+      const doneMessage = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
@@ -262,18 +264,42 @@ _ _
 -# <:blank:1467844528554901608> [where the water guides your order](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
-    await channel.send({ content: doneMessage });
-  } else {
-    // Update status in database
-    const order = await storage.getOrderByMessageId(message.id);
-    if (order) {
-      await storage.updateOrderStatus(order.id, action);
+      await channel.send({ content: doneMessage });
+    } catch (e) {
+      console.error("Error in done status processing:", e);
     }
-    
-    await message.edit({
-      content: newContent
-    });
+  } else {
+    try {
+      // Re-create the components so they stay active for the next update
+      const select = new StringSelectMenuBuilder()
+        .setCustomId('order-status')
+        .setPlaceholder('set order status...')
+        .addOptions([
+          { label: 'Noted', value: 'noted' },
+          { label: 'Processing', value: 'processing' },
+          { label: 'Done', value: 'done' }
+        ]);
+      
+      const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+
+      await message.edit({
+        content: newContent,
+        components: [row]
+      });
+
+      // Update status in database
+      const order = await storage.getOrderByMessageId(message.id);
+      if (order) {
+        await storage.updateOrderStatus(order.id, action);
+      }
+    } catch (e) {
+      console.error("Error in status update processing:", e);
+    }
   }
 
-  await interaction.deferUpdate();
+  try {
+    await interaction.deferUpdate();
+  } catch (e) {
+    // Ignore if already acknowledged
+  }
 }
