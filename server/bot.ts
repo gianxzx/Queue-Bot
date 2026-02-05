@@ -53,30 +53,10 @@ const commands = [
         .setRequired(true)),
   new SlashCommandBuilder()
     .setName('order-done')
-    .setDescription('Mark an order as done and send the pickup message')
+    .setDescription('Mark an order as done using Order ID')
     .addStringOption(option => 
-      option.setName('food')
-        .setDescription('The food item (use comma to separate ex: x,x)')
-        .setRequired(true))
-    .addStringOption(option => 
-      option.setName('qty')
-        .setDescription('Quantity (use comma to separate ex: 0,0)')
-        .setRequired(true))
-    .addStringOption(option => 
-      option.setName('payment')
-        .setDescription('Payment method')
-        .setRequired(true)
-        .addChoices(
-          { name: 'donation', value: 'donation' },
-          { name: 'premades', value: 'premades' }
-        ))
-    .addStringOption(option => 
-      option.setName('customer-username')
-        .setDescription('Customer username (forping)')
-        .setRequired(true))
-    .addStringOption(option => 
-      option.setName('total-bill')
-        .setDescription('Total bill amount')
+      option.setName('order-id')
+        .setDescription('The unique Order ID (e.g., EYWA-123)')
         .setRequired(true))
 ];
 
@@ -143,6 +123,9 @@ async function handleAddQueue(interaction: any) {
   const totalBill = interaction.options.getString('total-bill');
   const user = interaction.user;
 
+  // Generate a random-ish readable order ID
+  const orderId = `EYWA-${Math.floor(1000 + Math.random() * 9000)}`;
+
   const publicMessage = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
@@ -171,7 +154,7 @@ _ _
 
   const queueMessageContent = `
 ** **
-<:blue_pin:1463465585915723787>   :  **order placed** *!*
+<:blue_pin:1463465585915723787>   :  **order placed** *!* [ **${orderId}** ]
 
 <:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   (**${qty}**) ${food}
 <:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   **paid via ${payment}**
@@ -200,6 +183,7 @@ Noted *!*
   });
 
   await storage.createOrder({
+    orderId,
     customerUsername,
     food,
     qty,
@@ -220,14 +204,23 @@ async function handleOrderDone(interaction: any) {
     return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
   }
 
-  const food = interaction.options.getString('food');
-  const qty = interaction.options.getString('qty');
-  const payment = interaction.options.getString('payment');
-  const customerUsername = interaction.options.getString('customer-username');
-  const totalBill = interaction.options.getString('total-bill');
+  const inputOrderId = interaction.options.getString('order-id');
   const user = interaction.user;
 
-  const doneMessageContent = `
+  try {
+    const order = await storage.getOrderByOrderId(inputOrderId);
+    
+    if (!order) {
+      return interaction.reply({ content: `Order ID **${inputOrderId}** not found.`, ephemeral: true });
+    }
+
+    if (order.status === 'done') {
+      return interaction.reply({ content: `Order **${inputOrderId}** is already marked as done.`, ephemeral: true });
+    }
+
+    const { customerUsername, food, qty, payment, totalBill, messageId } = order;
+
+    const doneMessageContent = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
@@ -246,45 +239,36 @@ _ _
 _ _
 `;
 
-  await interaction.reply({ content: doneMessageContent });
+    await interaction.reply({ content: doneMessageContent });
 
-  // Update status in database if we can find a matching order
-  try {
-    const activeOrders = await storage.getOrders();
-    const matchingOrder = activeOrders.find(o => 
-      o.customerUsername === customerUsername && 
-      o.food === food && 
-      o.status !== 'done'
-    );
-    
-    if (matchingOrder) {
-      await storage.updateOrderStatus(matchingOrder.id, 'done');
+    // Update status in database
+    await storage.updateOrderStatus(order.id, 'done');
       
-      // Also try to update the queue message if possible
-      if (matchingOrder.messageId) {
-        try {
-          const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as any;
-          if (queueChannel) {
-            const message = await queueChannel.messages.fetch(matchingOrder.messageId);
-            if (message) {
-              let newContent = message.content;
-              const statusMatch = newContent.match(/(Noted|Processing|Done) \*!\*/);
-              if (statusMatch) {
-                newContent = newContent.replace(statusMatch[0], "Done *!*");
-              }
-              await message.edit({
-                content: newContent,
-                components: []
-              });
+    // Also update the queue message if possible
+    if (messageId) {
+      try {
+        const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as any;
+        if (queueChannel) {
+          const message = await queueChannel.messages.fetch(messageId);
+          if (message) {
+            let newContent = message.content;
+            const statusMatch = newContent.match(/(Noted|Processing|Done) \*!\*/);
+            if (statusMatch) {
+              newContent = newContent.replace(statusMatch[0], "Done *!*");
             }
+            await message.edit({
+              content: newContent,
+              components: []
+            });
           }
-        } catch (e) {
-          console.error("Failed to update queue message via /order-done:", e);
         }
+      } catch (e) {
+        console.error("Failed to update queue message via /order-done:", e);
       }
     }
   } catch (e) {
-    console.error("Database update failed in /order-done:", e);
+    console.error("Error in /order-done command:", e);
+    await interaction.reply({ content: 'Failed to process order. Please try again.', ephemeral: true });
   }
 }
 
