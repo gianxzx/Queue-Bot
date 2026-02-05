@@ -10,7 +10,6 @@ import {
 import { storage } from "./storage";
 
 const STAFF_ROLE_IDS = [
-  "1461710247193219190",
   "1461710247193219188",
   "1461710247193219189"
 ];
