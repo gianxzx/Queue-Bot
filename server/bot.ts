@@ -218,7 +218,7 @@ async function handleOrderDone(interaction: any) {
       return interaction.reply({ content: `Order **${inputOrderId}** is already marked as done.`, ephemeral: true });
     }
 
-    const { customerUsername, food, qty, payment, totalBill, messageId } = order;
+    const { customerUsername, food, qty, payment, totalBill, messageId, staffUsername } = order;
 
     const doneMessageContent = `
 _ _
@@ -226,16 +226,16 @@ _ _
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> mawey, dear ${customerUsername} your order is **done** *!*
-<:blank:1467844528554901608> your order is ready for pickup — enjoy the tides <:lightblue_heartios:1463466125537968129> 
+<:blank:1467844528554901608> your meal is ready for pickup — enjoy the tides <:lightblue_heartios:1463466125537968129> 
 
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> ( **${qty}** ) — ${food}
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> paid via ${payment}
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> total bill : ${totalBill}
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> NBH: \`\`Mr_Lambo221\`\`
 <:blank:1467844528554901608> <:blank:1467844528554901608> 
--# served by ${user} <a:blue_heartpop:1467809370246090928> 
+-# served by ${staffUsername} <a:blue_heartpop:1467809370246090928> 
 _ _
--# <:blank:1467844528554901608> [__don’t forget — your chef deserves a vouch__](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
+<:blank:1467844528554901608> [__don’t forget — your chef deserves a vouch__](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
 

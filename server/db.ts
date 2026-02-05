@@ -15,8 +15,6 @@ if (!process.env.DATABASE_URL) {
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  // Adding connection timeout to help debug
-  connectionTimeoutMillis: 5000,
 });
 
 export const db = drizzle(pool, { schema });
