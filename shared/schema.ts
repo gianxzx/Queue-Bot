@@ -4,7 +4,6 @@ import { z } from "zod";
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
-  orderId: text("order_id").notNull(), // Unique readable ID like EYWA-123
   customerUsername: text("customer_username").notNull(),
   food: text("food").notNull(),
   qty: text("qty").notNull(),

@@ -53,11 +53,31 @@ const commands = [
         .setRequired(true)),
   new SlashCommandBuilder()
     .setName('order-done')
-    .setDescription('Mark an order as done using Order ID')
+    .setDescription('Mark an order as done')
     .addStringOption(option => 
-      option.setName('order-id')
-        .setDescription('The unique Order ID (e.g., EYWA-123)')
+      option.setName('food')
+        .setDescription('The food item (use comma to separate ex: x,x)')
         .setRequired(true))
+    .addStringOption(option => 
+      option.setName('qty')
+        .setDescription('Quantity (use comma to separate ex: 0, 0)')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('payment')
+        .setDescription('Payment method')
+        .setRequired(true)
+        .addChoices(
+          { name: 'donation', value: 'donation' },
+          { name: 'premades', value: 'premades' }
+        ))
+    .addStringOption(option => 
+      option.setName('customer-username')
+        .setDescription('Customer username (for ping)')
+        .setRequired(true))
+    .addStringOption(option => 
+      option.setName('total-bill')
+        .setDescription('Total bill amount')
+        .setRequired(true)),
 ];
 
 export async function startBot() {
@@ -123,9 +143,6 @@ async function handleAddQueue(interaction: any) {
   const totalBill = interaction.options.getString('total-bill');
   const user = interaction.user;
 
-  // Generate a random-ish readable order ID
-  const orderId = `EYWA-${Math.floor(1000 + Math.random() * 9000)}`;
-
   const publicMessage = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
@@ -154,7 +171,7 @@ _ _
 
   const queueMessageContent = `
 ** **
-<:blue_pin:1463465585915723787>   :  **order placed** *!* [ **${orderId}** ]
+<:blue_pin:1463465585915723787>   :  **order placed** *!*
 
 <:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   (**${qty}**) ${food}
 <:blank:1467844528554901608><:blank:1467844528554901608><a:tsireya_star:1467809489163128898>   **paid via ${payment}**
@@ -183,7 +200,6 @@ Noted *!*
   });
 
   await storage.createOrder({
-    orderId,
     customerUsername,
     food,
     qty,
@@ -204,23 +220,14 @@ async function handleOrderDone(interaction: any) {
     return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
   }
 
-  const inputOrderId = interaction.options.getString('order-id');
+  const food = interaction.options.getString('food');
+  const qty = interaction.options.getString('qty');
+  const payment = interaction.options.getString('payment');
+  const customerUsername = interaction.options.getString('customer-username');
+  const totalBill = interaction.options.getString('total-bill');
   const user = interaction.user;
 
-  try {
-    const order = await storage.getOrderByOrderId(inputOrderId);
-    
-    if (!order) {
-      return interaction.reply({ content: `Order ID **${inputOrderId}** not found.`, ephemeral: true });
-    }
-
-    if (order.status === 'done') {
-      return interaction.reply({ content: `Order **${inputOrderId}** is already marked as done.`, ephemeral: true });
-    }
-
-    const { customerUsername, food, qty, payment, totalBill, messageId, staffUsername } = order;
-
-    const doneMessageContent = `
+  const doneMessageContent = `
 _ _
 <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> <:blank:1467844528554901608> 
 your order flows with Eywa<:blank:1467844528554901608>  <a:blue_dolphin:1467855473989386314>
@@ -233,42 +240,23 @@ _ _
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> total bill : ${totalBill}
 <:blank:1467844528554901608> <a:tsireya_star:1467809489163128898> NBH: \`\`Mr_Lambo221\`\`
 <:blank:1467844528554901608> <:blank:1467844528554901608> 
--# served by ${staffUsername} <a:blue_heartpop:1467809370246090928> 
+-# served by ${user} <a:blue_heartpop:1467809370246090928> 
 _ _
 <:blank:1467844528554901608> [__don’t forget — your chef deserves a vouch__](https://discord.com/channels/1461710247193219186/1462273166432014641/1467927596200362087)
 _ _
 `;
 
-    await interaction.reply({ content: doneMessageContent });
+  await interaction.reply({ content: doneMessageContent });
 
-    // Update status in database
-    await storage.updateOrderStatus(order.id, 'done');
-      
-    // Also update the queue message if possible
-    if (messageId) {
-      try {
-        const queueChannel = await client.channels.fetch(QUEUE_CHANNEL_ID) as any;
-        if (queueChannel) {
-          const message = await queueChannel.messages.fetch(messageId);
-          if (message) {
-            let newContent = message.content;
-            const statusMatch = newContent.match(/(Noted|Processing|Done) \*!\*/);
-            if (statusMatch) {
-              newContent = newContent.replace(statusMatch[0], "Done *!*");
-            }
-            await message.edit({
-              content: newContent,
-              components: []
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to update queue message via /order-done:", e);
-      }
+  // Update status in database if we can find it
+  try {
+    const orders = await storage.getOrders();
+    const order = orders.find(o => o.customerUsername === customerUsername && o.status !== 'done');
+    if (order) {
+      await storage.updateOrderStatus(order.id, 'done');
     }
   } catch (e) {
-    console.error("Error in /order-done command:", e);
-    await interaction.reply({ content: 'Failed to process order. Please try again.', ephemeral: true });
+    console.error("Error updating order status:", e);
   }
 }
 
